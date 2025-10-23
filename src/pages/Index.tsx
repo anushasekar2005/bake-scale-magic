@@ -119,7 +119,7 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       {/* Background Image with Overlay */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 pointer-events-none"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 pointer-events-none"
         style={{ backgroundImage: `url(${bakingBackground})` }}
       />
       
