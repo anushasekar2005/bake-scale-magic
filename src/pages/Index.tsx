@@ -33,15 +33,24 @@ const Index = () => {
     }
   }, []);
 
-  // Auto-calculate when inputs change
-  useEffect(() => {
-    if (ingredientsText.trim() || instructionsText.trim()) {
-      const recipe = parseRecipe(ingredientsText, instructionsText, multiplier);
-      setParsedRecipe(recipe);
-    } else {
-      setParsedRecipe(null);
+  const handleConvert = () => {
+    if (!ingredientsText.trim() && !instructionsText.trim()) {
+      toast({
+        title: "Recipe is empty",
+        description: "Please enter ingredients or instructions",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [ingredientsText, instructionsText, multiplier]);
+
+    const recipe = parseRecipe(ingredientsText, instructionsText, multiplier);
+    setParsedRecipe(recipe);
+    
+    toast({
+      title: "Recipe scaled!",
+      description: `Recipe multiplied by ${multiplier}x`,
+    });
+  };
 
   const handleSaveRecipe = () => {
     if (!recipeName.trim()) {
@@ -154,7 +163,7 @@ const Index = () => {
                   />
                 </div>
 
-                <div className="space-y-4 pt-4">
+                <div className="space-y-4 pt-4 border-t border-border">
                   <Label>Multiplier: {multiplier}x</Label>
                   <Slider
                     value={[multiplier]}
@@ -168,6 +177,14 @@ const Index = () => {
                     Scale between 0.3x (smaller batch) and 3x (larger batch)
                   </p>
                 </div>
+
+                <Button 
+                  onClick={handleConvert} 
+                  className="w-full"
+                  size="lg"
+                >
+                  Convert Recipe
+                </Button>
 
                 <div className="space-y-2 border-t border-border pt-4">
                   <Label htmlFor="recipeName">Recipe Name (for saving)</Label>
