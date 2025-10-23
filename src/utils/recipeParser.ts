@@ -86,6 +86,7 @@ export function scaleIngredients(
   ingredients: ParsedIngredient[],
   multiplier: number
 ): ParsedIngredient[] {
+  console.log('Scaling with multiplier:', multiplier);
   return ingredients.map((ingredient) => {
     if (ingredient.amount === 0) {
       return ingredient; // Keep non-measurable items as-is
@@ -93,6 +94,8 @@ export function scaleIngredients(
     
     const gramsOriginal = convertToGrams(ingredient.amount, ingredient.unit);
     const gramsScaled = scaleValue(gramsOriginal, multiplier);
+    
+    console.log(`Ingredient: ${ingredient.ingredient}, Original: ${ingredient.amount} ${ingredient.unit}, Grams: ${gramsOriginal}, Scaled: ${gramsScaled}`);
     
     return {
       ...ingredient,
