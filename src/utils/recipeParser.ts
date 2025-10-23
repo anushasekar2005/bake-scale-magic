@@ -16,18 +16,58 @@ export interface ParsedRecipe {
 
 // Parse a single ingredient line
 function parseIngredientLine(line: string): ParsedIngredient | null {
-  const trimmed = line.trim();
+  // Helpers: sanitize bullets, normalize unicode fractions, and extract grams in parentheses
+  const replaceUnicodeFractions = (input: string) => {
+    const map: Record<string, string> = {
+      '½': '1/2',
+      '¼': '1/4',
+      '¾': '3/4',
+      '⅓': '1/3',
+      '⅔': '2/3',
+      '⅛': '1/8',
+      '⅜': '3/8',
+      '⅝': '5/8',
+      '⅞': '7/8',
+      '⅕': '1/5',
+      '⅖': '2/5',
+      '⅗': '3/5',
+      '⅘': '4/5',
+      '⅙': '1/6',
+      '⅚': '5/6',
+      '⅐': '1/7',
+      '⅑': '1/9',
+      '⅒': '1/10',
+    };
+    let out = input;
+    for (const [k, v] of Object.entries(map)) {
+      out = out.split(k).join(v);
+    }
+    return out;
+  };
+
+  const sanitizeLine = (input: string) => {
+    // Remove common leading bullets/checkboxes and excess whitespace
+    return input
+      .replace(/^\s*[•▢\-\*\u2022]+\s*/u, '')
+      .replace(/\s+\(/g, ' (') // ensure space before parentheses for readability
+      .trim();
+  };
+
+  const trimmed = replaceUnicodeFractions(sanitizeLine(line));
   if (!trimmed) return null;
-  
-  // Match patterns like: "2 cups flour", "1/2 cup sugar", "3 eggs", "2.5 tablespoons butter"
+
+  // If the line contains grams in parentheses, e.g., "(113g)", capture it
+  const gramsMatch = trimmed.match(/\((\s*\d+\.?\d*)\s*g\s*\)/i);
+
+  // Match patterns like: "2 cups flour", "1/2 cup sugar", "3 eggs", "2.5 tablespoons butter", "1 1/3 cups flour"
   const pattern = /^(\d+\.?\d*|\d*\/\d+|\d+\s+\d+\/\d+)\s*([a-zA-Z]+)?\s+(.+)$/;
   const match = trimmed.match(pattern);
-  
+
   if (match) {
     let amount = 0;
     const amountStr = match[1].trim();
-    
-    // Handle fractions
+
+    // Handle fractions / mixed numbers
     if (amountStr.includes('/')) {
       const parts = amountStr.split(/\s+/);
       if (parts.length === 2) {
@@ -43,10 +83,18 @@ function parseIngredientLine(line: string): ParsedIngredient | null {
     } else {
       amount = parseFloat(amountStr);
     }
-    
-    const unit = match[2] || '';
-    const ingredient = match[3];
-    
+
+    let unit = match[2] || '';
+    let ingredient = match[3].trim();
+
+    // If grams were specified in parentheses, prefer that for precise scaling
+    if (gramsMatch) {
+      const gramsVal = parseFloat(gramsMatch[1]);
+      unit = 'g';
+      amount = gramsVal;
+      ingredient = ingredient.replace(/\((\s*\d+\.?\d*)\s*g\s*\)/i, '').trim();
+    }
+
     return {
       original: trimmed,
       amount,
@@ -55,7 +103,20 @@ function parseIngredientLine(line: string): ParsedIngredient | null {
       scaledAmount: amount,
     };
   }
-  
+
+  // If no match but grams are present, use them directly
+  if (gramsMatch) {
+    const gramsVal = parseFloat(gramsMatch[1]);
+    const ingredient = trimmed.replace(/\((\s*\d+\.?\d*)\s*g\s*\)/i, '').trim();
+    return {
+      original: trimmed,
+      amount: gramsVal,
+      unit: 'g',
+      ingredient,
+      scaledAmount: gramsVal,
+    };
+  }
+
   // If no match, return the line as-is (for items without measurements)
   return {
     original: trimmed,
