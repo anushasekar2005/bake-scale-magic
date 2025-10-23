@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { parseRecipe, ParsedRecipe } from "@/utils/recipeParser";
 import { ChefHat, Save, Trash2 } from "lucide-react";
+import bakingBackground from "@/assets/baking-background.png";
 
 interface SavedRecipe {
   id: string;
@@ -115,9 +116,17 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
+    <div className="min-h-screen bg-background relative">
+      {/* Background Image with Overlay */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.08] pointer-events-none"
+        style={{ backgroundImage: `url(${bakingBackground})` }}
+      />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
             <ChefHat className="h-8 w-8 text-primary" />
@@ -127,9 +136,9 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </header>
+        </header>
 
-      <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8">
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Input Section */}
           <div className="space-y-6">
@@ -299,6 +308,7 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
         </div>
       </div>
     </div>
