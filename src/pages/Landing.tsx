@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat } from "lucide-react";
+import { ChefHat, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import bakingBackground from "@/assets/baking-background.png";
 
@@ -11,6 +11,13 @@ const Landing = () => {
       icon: ChefHat,
       path: "/recipe-scaler",
       color: "from-primary/20 to-primary/5"
+    },
+    {
+      title: "Recipe Pricing Tool",
+      description: "Calculate the cost of your recipes based on ingredient usage. Track costs per unit and optimize your pricing.",
+      icon: DollarSign,
+      path: "/pricing-tool",
+      color: "from-accent/20 to-accent/5"
     }
   ];
 
