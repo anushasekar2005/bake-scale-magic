@@ -1,9 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, DollarSign } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ChefHat, DollarSign, LogIn, LogOut } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import bakingBackground from "@/assets/baking-background.png";
+import { useAuth } from "@/hooks/useAuth";
 
 const Landing = () => {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   const tools = [
     {
       title: "Recipe Scaler",
@@ -34,9 +43,27 @@ const Landing = () => {
         {/* Header */}
         <header className="border-b border-border bg-card/95 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-8">
-            <div className="text-center">
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2">Cooking Tools</h1>
-              <p className="text-lg text-muted-foreground">Your digital kitchen assistant</p>
+            <div className="flex items-center justify-between">
+              <div className="text-center flex-1">
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2">Cooking Tools</h1>
+                <p className="text-lg text-muted-foreground">Your digital kitchen assistant</p>
+              </div>
+              <div className="flex items-center gap-4">
+                {user ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => navigate("/auth")} className="gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Sign In
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </header>

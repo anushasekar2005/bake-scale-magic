@@ -5,15 +5,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { SavedIngredient, calculateIngredientCost, IngredientCost } from "@/utils/pricingCalculator";
+import { IngredientCost } from "@/utils/pricingCalculator";
 import { Save, Trash2, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SavedIngredientsLibraryProps {
   onSelectIngredient: (ingredient: IngredientCost) => void;
 }
 
+interface SavedIngredient {
+  id: string;
+  name: string;
+  package_cost: number;
+  package_amount: number;
+  package_unit: string;
+}
+
 export function SavedIngredientsLibrary({ onSelectIngredient }: SavedIngredientsLibraryProps) {
+  const { user } = useAuth();
   const [savedIngredients, setSavedIngredients] = useState<SavedIngredient[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [name, setName] = useState("");
@@ -25,13 +36,29 @@ export function SavedIngredientsLibrary({ onSelectIngredient }: SavedIngredients
   const [amountUnit, setAmountUnit] = useState<'g' | 'sticks' | 'count'>('g');
 
   useEffect(() => {
-    const saved = localStorage.getItem("savedIngredients");
-    if (saved) {
-      setSavedIngredients(JSON.parse(saved));
+    if (user) {
+      loadIngredients();
     }
-  }, []);
+  }, [user]);
 
-  const handleSaveIngredient = () => {
+  const loadIngredients = async () => {
+    const { data, error } = await supabase
+      .from("saved_ingredients")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error loading ingredients",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else if (data) {
+      setSavedIngredients(data);
+    }
+  };
+
+  const handleSaveIngredient = async () => {
     if (!name.trim()) {
       toast({
         title: "Name required",
@@ -53,40 +80,50 @@ export function SavedIngredientsLibrary({ onSelectIngredient }: SavedIngredients
       return;
     }
 
-    const newIngredient: SavedIngredient = {
-      id: Date.now().toString(),
+    const { error } = await supabase.from("saved_ingredients").insert({
+      user_id: user?.id,
       name,
-      packageCost: pkgCost,
-      packageSize: pkgSize,
-      packageUnit,
-      costPerUnit: pkgCost / pkgSize,
-      timestamp: Date.now(),
-    };
-
-    const updated = [...savedIngredients, newIngredient];
-    setSavedIngredients(updated);
-    localStorage.setItem("savedIngredients", JSON.stringify(updated));
-
-    toast({
-      title: "Ingredient saved",
-      description: `${name} has been saved to your library`,
+      package_cost: pkgCost,
+      package_amount: pkgSize,
+      package_unit: packageUnit,
     });
 
-    setName("");
-    setPackageCost("");
-    setPackageSize("");
-    setIsDialogOpen(false);
+    if (error) {
+      toast({
+        title: "Error saving ingredient",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Ingredient saved",
+        description: `${name} has been saved to your library`,
+      });
+
+      setName("");
+      setPackageCost("");
+      setPackageSize("");
+      setIsDialogOpen(false);
+      loadIngredients();
+    }
   };
 
-  const handleDeleteIngredient = (id: string) => {
-    const updated = savedIngredients.filter(ing => ing.id !== id);
-    setSavedIngredients(updated);
-    localStorage.setItem("savedIngredients", JSON.stringify(updated));
+  const handleDeleteIngredient = async (id: string) => {
+    const { error } = await supabase.from("saved_ingredients").delete().eq("id", id);
 
-    toast({
-      title: "Ingredient deleted",
-      description: "Ingredient has been removed from your library",
-    });
+    if (error) {
+      toast({
+        title: "Error deleting ingredient",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Ingredient deleted",
+        description: "Ingredient has been removed from your library",
+      });
+      loadIngredients();
+    }
   };
 
   const handleUseIngredient = () => {
@@ -102,14 +139,35 @@ export function SavedIngredientsLibrary({ onSelectIngredient }: SavedIngredients
       return;
     }
 
-    const ingredient = calculateIngredientCost(
-      selectedIngredient.name,
-      selectedIngredient.packageCost,
-      selectedIngredient.packageSize,
-      selectedIngredient.packageUnit,
-      amtUsed,
-      amountUnit
-    );
+    // Convert units if needed
+    let finalAmountUsed = amtUsed;
+    const pkgUnit = selectedIngredient.package_unit;
+    
+    // If units match, no conversion needed
+    if (pkgUnit === amountUnit) {
+      finalAmountUsed = amtUsed;
+    } else if (pkgUnit === 'g' && amountUnit === 'sticks') {
+      // Convert sticks to grams (1 stick = 113g)
+      finalAmountUsed = amtUsed * 113;
+    } else if (pkgUnit === 'sticks' && amountUnit === 'g') {
+      // Convert grams to sticks
+      finalAmountUsed = amtUsed / 113;
+    }
+
+    const costPerUnit = selectedIngredient.package_cost / selectedIngredient.package_amount;
+    const totalCost = costPerUnit * finalAmountUsed;
+
+    const ingredient: IngredientCost = {
+      id: Date.now().toString() + Math.random().toString(36).substring(7),
+      name: selectedIngredient.name,
+      packageCost: selectedIngredient.package_cost,
+      packageSize: selectedIngredient.package_amount,
+      packageUnit: selectedIngredient.package_unit as 'g' | 'sticks' | 'count',
+      amountUsed: amtUsed,
+      amountUnit: amountUnit,
+      costPerUnit,
+      totalCost,
+    };
 
     onSelectIngredient(ingredient);
     setSelectedIngredient(null);
@@ -202,8 +260,8 @@ export function SavedIngredientsLibrary({ onSelectIngredient }: SavedIngredients
                   <div className="flex-1">
                     <p className="font-medium">{ingredient.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      ${ingredient.packageCost.toFixed(2)} / {ingredient.packageSize} {ingredient.packageUnit} 
-                      {" "}(${ingredient.costPerUnit.toFixed(4)} per {ingredient.packageUnit})
+                      ${ingredient.package_cost.toFixed(2)} / {ingredient.package_amount} {ingredient.package_unit}
+                      {" "}(${(ingredient.package_cost / ingredient.package_amount).toFixed(4)} per {ingredient.package_unit})
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -215,7 +273,7 @@ export function SavedIngredientsLibrary({ onSelectIngredient }: SavedIngredients
                           className="gap-2"
                           onClick={() => {
                             setSelectedIngredient(ingredient);
-                            setAmountUnit(ingredient.packageUnit);
+                            setAmountUnit(ingredient.package_unit as any);
                           }}
                         >
                           <Plus className="h-4 w-4" />

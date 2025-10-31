@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, ArrowLeft } from "lucide-react";
+import { DollarSign, ArrowLeft, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { IngredientInput } from "@/components/pricing/IngredientInput";
 import { IngredientsTable } from "@/components/pricing/IngredientsTable";
@@ -11,10 +12,20 @@ import { ProfitCalculator } from "@/components/pricing/ProfitCalculator";
 import { IngredientCost, calculateTotalRecipeCost } from "@/utils/pricingCalculator";
 import { toast } from "@/hooks/use-toast";
 import bakingBackground from "@/assets/baking-background.png";
+import { useAuth } from "@/hooks/useAuth";
 
 const PricingTool = () => {
+  const navigate = useNavigate();
+  const { user, loading, signOut } = useAuth();
   const [ingredients, setIngredients] = useState<IngredientCost[]>([]);
   const totalCost = calculateTotalRecipeCost(ingredients);
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
 
   const handleAddIngredient = (ingredient: IngredientCost) => {
     setIngredients([...ingredients, ingredient]);
@@ -36,6 +47,23 @@ const PricingTool = () => {
     });
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background relative">
       {/* Background Image with Overlay */}
@@ -49,16 +77,25 @@ const PricingTool = () => {
         {/* Header */}
         <header className="border-b border-border bg-card/95 backdrop-blur-sm">
           <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center gap-3">
-              <Link to="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-5 w-5" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Link to="/">
+                  <Button variant="ghost" size="icon">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <DollarSign className="h-8 w-8 text-primary" />
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">Recipe Pricing Tool</h1>
+                  <p className="text-sm text-muted-foreground">Calculate costs based on ingredient usage</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
                 </Button>
-              </Link>
-              <DollarSign className="h-8 w-8 text-primary" />
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Recipe Pricing Tool</h1>
-                <p className="text-sm text-muted-foreground">Calculate costs based on ingredient usage</p>
               </div>
             </div>
           </div>
